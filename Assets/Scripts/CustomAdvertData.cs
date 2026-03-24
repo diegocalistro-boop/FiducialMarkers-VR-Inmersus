@@ -1,0 +1,145 @@
+// Copyright (c) Meta Platforms, Inc. and affiliates.
+
+using Meta.XR.Samples;
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+using UnityEngine;
+
+using Sampleton = SampleController; // only transitional
+
+
+/// <summary>
+///   Stores and serializes data intended for calls to
+///   <see cref="OVRColocationSession.StartAdvertisementAsync"/>.
+/// </summary>
+/// <remarks>
+///   Used by <see cref="ColoDiscoMan"/>.
+/// </remarks>
+[MetaCodeSample("SharedSpatialAnchors-ColocationSessionGroups")]
+public sealed class CustomAdvertData
+{
+    public string DisplayName => m_DisplayName ?? "<err>";
+
+    // note: the fact that this struct stores users and anchors is an artifact of my earlier misunderstanding
+    //       of the whole point of this custom data. I'm keeping it, however, as a dummy data to test transmission.
+    // UPDATE: This actually turned out to be quite fortuitous; now we have a way to transmit (without photon) these IDs
+    //         for the express purpose of comparing the new APIs and the baseline SSA APIs.
+    public readonly HashSet<ulong> Users = new();
+    public readonly HashSet<Guid> Anchors = new();
+    public readonly List<Pose> Poses = new();
+
+
+
+    public CustomAdvertData(string displayName, ulong creator, IEnumerable<Guid> anchors)
+    {
+        SetDisplayName(displayName);
+
+        if (creator != 0)
+            Users.Add(creator);
+        if (anchors != null)
+            Anchors.UnionWith(anchors);
+    }
+
+
+    public bool TryWrite(out byte[] bytes)
+    {
+        bytes = Array.Empty<byte>();
+
+        try
+        {
+            var pod = new POD
+            {
+                DisplayName = DisplayName,
+                Users = Users.ToArray(),
+                Anchors = Anchors.Select(guid => guid.ToString("N")).ToArray(),
+                Poses = Poses.ToArray(),
+            };
+
+            bytes = SampleExtensions.SerializeToByteArray(pod);
+
+            return bytes.Length <= OVRColocationSession.Data.MaxMetadataSize;
+        }
+        catch (Exception e)
+        {
+            Sampleton.LogError($"{e.GetType().Name}: {e.Message}");
+            Debug.LogException(e);
+            return false;
+        }
+    }
+
+    public static bool TryRead(in byte[] bytes, out CustomAdvertData data)
+    {
+        data = new CustomAdvertData();
+
+        if (bytes is null || bytes.Length < 2) // "{}".Length
+            return false;
+
+        try
+        {
+            // return data.TryReadThrows(in bytes);
+
+            var pod = SampleExtensions.DeserializeFromByteArray<POD>(bytes);
+
+            data.m_DisplayName = pod.DisplayName;
+            if (pod.Users is not null)
+                data.Users.UnionWith(pod.Users);
+            if (pod.Anchors is not null)
+                data.Anchors.UnionWith(pod.Anchors.Select(Guid.Parse));
+            if (pod.Poses is not null)
+                data.Poses.AddRange(pod.Poses);
+            return true;
+        }
+        catch (Exception e)
+        {
+            Sampleton.LogError($"{e.GetType().Name}: {e.Message}");
+            Debug.LogException(e);
+            return false;
+        }
+    }
+
+
+    //
+    // private section
+
+    [Serializable]
+    struct POD
+    {
+        public string DisplayName;
+        public ulong[] Users;
+        public string[] Anchors;
+        public Pose[] Poses;
+    }
+
+    const int k_MaxDisplayName = 60;              // somewhat arbitrary
+
+
+    // instance
+    string m_DisplayName;
+
+
+    internal void SetDisplayName(string displayName)
+    {
+        if (string.IsNullOrEmpty(displayName))
+        {
+            m_DisplayName = "<anonymous>";
+        }
+        else if (displayName.Length > k_MaxDisplayName)
+        {
+            m_DisplayName = displayName.Remove(k_MaxDisplayName);
+            Sampleton.Log($"* Group display name \"{displayName}\" is too long; truncating to \"{m_DisplayName}\"", LogType.Warning);
+        }
+        else
+        {
+            m_DisplayName = displayName;
+        }
+    }
+
+
+    CustomAdvertData()
+    {
+    }
+
+} // end struct CustomAdvertData
