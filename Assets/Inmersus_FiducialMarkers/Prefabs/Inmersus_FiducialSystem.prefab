@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 4804401823177574682}
   - component: {fileID: 5735861301250072602}
   - component: {fileID: 734336387438993032}
+  - component: {fileID: 7063687505845030742}
   m_Layer: 0
   m_Name: Inmersus_FiducialSystem
   m_TagString: Untagged
@@ -83,6 +84,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d52af4fee3121a4280717860ab4b942, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRDetector
+  passthroughCamera: {fileID: 0}
   segundosEntreEscaneos: 0.2
   mostrarMensajesDebug: 1
 --- !u!114 &734336387438993032
@@ -98,5 +100,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.MarkerAnchorManager
   detectorQR: {fileID: 5735861301250072602}
-  anchorCore: {fileID: 0}
+  anchorPrefab: {fileID: 1978002011806910258, guid: cd2360f6c9f3b3b4f90f53cac91a9698, type: 3}
+  mostrarMensajesDebug: 1
+--- !u!114 &7063687505845030742
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5808849023329401963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d19bc45f2e92ed6438ec0bd8fb7cb45b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRDetectionCoordinator
+  anchorManager: {fileID: 734336387438993032}
+  detectorQR: {fileID: 5735861301250072602}
+  scanningUI: {fileID: 0}
+  anchorsNecesarios: 2
   mostrarMensajesDebug: 1

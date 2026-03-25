@@ -1,8 +1,8 @@
 {
     "arena": {
         "name": "Arena Principal",
-        "width": 2.0,
-        "height": 2.0
+        "width": 1.0,
+        "height": 1.0
     },
     "markers": [
         {
@@ -17,8 +17,8 @@
             "id": "MARKER_02",
             "size": 0.20000000298023225,
             "position": {
-                "x": 1.7000000476837159,
-                "y": 1.7000000476837159
+                "x": 1.0,
+                "y": 1.0
             }
         }
     ]
