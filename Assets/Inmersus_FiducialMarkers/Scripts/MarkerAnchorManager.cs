@@ -28,11 +28,6 @@ namespace Inmersus.FiducialMarkers
         [Tooltip("Prefab que contiene OVRSpatialAnchor")]
         public GameObject anchorPrefab;
 
-        [Header("Estabilidad")]
-        [Tooltip("Detecciones consecutivas del mismo QR antes de confirmar (anti-movimiento)")]
-        [Min(2)]
-        public int deteccionesParaConfirmar = 5;
-
         [Header("Debug")]
         public bool mostrarMensajesDebug = true;
 
@@ -40,12 +35,18 @@ namespace Inmersus.FiducialMarkers
         // Eventos
         // ---------------------------------------------------------------
         public event System.Action<string, OVRSpatialAnchor> OnMarkerAnchorCreated;
+        
+        /// <summary>
+        /// Se dispara cuando el sistema detectó un QR y está esperando
+        /// que el usuario presione el gatillo para confirmar su posición.
+        /// </summary>
+        public event System.Action<string> OnEsperandoConfirmacionUsuario;
 
         // ---------------------------------------------------------------
-        // Estado: acumulación de detecciones por marcador
+        // Estado
         // ---------------------------------------------------------------
-        private readonly Dictionary<string, List<Vector3>> _hitsPorMarcador = new();
-        private readonly Dictionary<string, bool>          _confirmados     = new();
+        private string _qrPendienteDeConfirmacion;
+        private readonly Dictionary<string, bool> _confirmados = new();
 
         // Posiciones FÍSICAS confirmadas (en espacio del headset/mundo Meta)
         private readonly Dictionary<string, Vector3> _posicionesFisicas = new();
@@ -85,15 +86,19 @@ namespace Inmersus.FiducialMarkers
         }
 
         // ---------------------------------------------------------------
-        // Callback del detector — acumula hits hasta confirmar
+        // Callback del detector — ZXing lee el QR identificador
         // ---------------------------------------------------------------
         private void OnQRDetected(string qrContent, Vector2[] corners)
         {
-            // Verificar si ya fue confirmado
+            // Si ya estamos esperando que el usuario confirme un QR, ignoramos nuevas lecturas
+            if (!string.IsNullOrEmpty(_qrPendienteDeConfirmacion))
+                return;
+
+            // Verificar si este QR ya fue confirmado exitosamente
             if (_confirmados.ContainsKey(qrContent))
                 return;
 
-            // Verificar que esté en la config
+            // Verificar que esté en la configuración
             MarkerConfig config = ArenaConfig.Instance?.GetMarkerById(qrContent);
             if (config == null)
             {
@@ -102,35 +107,62 @@ namespace Inmersus.FiducialMarkers
                 return;
             }
 
-            // Estimar posición en el piso (raycast Y=0)
-            if (!TryRaycastAPiso(corners, out Vector3 posEnPiso))
-            {
-                if (mostrarMensajesDebug)
-                    Debug.Log($"[MarkerAnchorManager] '{qrContent}' — rayo no impacta el piso. Apuntá más al suelo.");
+            // Pasamos al estado de esperar confirmación manual
+            _qrPendienteDeConfirmacion = qrContent;
+
+            if (mostrarMensajesDebug)
+                Debug.Log($"[MarkerAnchorManager] QR detectado '{qrContent}'. Esperando confirmación con el gatillo...");
+
+            // Notificamos a la UI
+            OnEsperandoConfirmacionUsuario?.Invoke(qrContent);
+        }
+
+        // ---------------------------------------------------------------
+        // Input del usuario — Confirmación de posición
+        // ---------------------------------------------------------------
+        private void Update()
+        {
+            if (string.IsNullOrEmpty(_qrPendienteDeConfirmacion)) 
                 return;
+
+            bool triggerPressed = false;
+
+            // Soporte Input System o viejo Input (Simulación para el Editor)
+            #if UNITY_EDITOR
+            if (Input.GetKeyDown(KeyCode.Space))
+                triggerPressed = true;
+            #endif
+
+            // Gatillo del visor (Quest)
+            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) || 
+                OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger))
+            {
+                triggerPressed = true;
             }
 
-            // Acumular detecciones
-            if (!_hitsPorMarcador.ContainsKey(qrContent))
-                _hitsPorMarcador[qrContent] = new List<Vector3>();
+            if (triggerPressed)
+            {
+                ConfirmarPosicionQR(_qrPendienteDeConfirmacion);
+            }
+        }
 
-            _hitsPorMarcador[qrContent].Add(posEnPiso);
-            int n = _hitsPorMarcador[qrContent].Count;
+        private void ConfirmarPosicionQR(string qrContent)
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return;
 
-            if (mostrarMensajesDebug && n % 2 == 0)
-                Debug.Log($"[MarkerAnchorManager] '{qrContent}' detección {n}/{deteccionesParaConfirmar}");
+            // Capturamos la posición del visor con Y=0
+            Vector3 posFinal = new Vector3(cam.transform.position.x, 0f, cam.transform.position.z);
+            
+            // Limpiamos el estado transitorio
+            _qrPendienteDeConfirmacion = null;
 
-            if (n < deteccionesParaConfirmar)
-                return;
-
-            // ¡CONFIRMADO! Promediar posiciones para mayor precisión
-            Vector3 posFinal = Promediar(_hitsPorMarcador[qrContent]);
-            _hitsPorMarcador.Remove(qrContent);
+            // Marcamos como confirmado y guardamos
             _confirmados[qrContent] = true;
             _posicionesFisicas[qrContent] = posFinal;
 
             if (mostrarMensajesDebug)
-                Debug.Log($"[MarkerAnchorManager] *** '{qrContent}' CONFIRMADO *** Pos física: {posFinal:F3}");
+                Debug.Log($"[MarkerAnchorManager] *** '{qrContent}' CONFIRMADO MANUALMENTE *** Pos física: {posFinal:F3}");
 
             // Crear el anchor en esa posición
             _ = CrearAnchor(qrContent, posFinal);
@@ -139,33 +171,7 @@ namespace Inmersus.FiducialMarkers
             TryAlinear();
         }
 
-        // ---------------------------------------------------------------
-        // Raycast al plano Y=0 (suelo)
-        // ---------------------------------------------------------------
-        private bool TryRaycastAPiso(Vector2[] corners, out Vector3 posicion)
-        {
-            posicion = Vector3.zero;
-            Camera cam = Camera.main;
-            if (cam == null || corners == null || corners.Length < 3)
-                return false;
 
-            // Centro del QR en viewport (ZXing: Y=0 arriba → Unity: Y=0 abajo)
-            Vector2 centro = Vector2.zero;
-            foreach (var c in corners) centro += c;
-            centro /= corners.Length;
-            Vector3 viewportPt = new Vector3(centro.x, 1f - centro.y, 0f);
-
-            Ray rayo = cam.ViewportPointToRay(viewportPt);
-            Plane piso = new Plane(Vector3.up, Vector3.zero);
-
-            if (!piso.Raycast(rayo, out float dist))
-                return false;
-            if (dist < 0.2f || dist > 10f)
-                return false;
-
-            posicion = rayo.GetPoint(dist);
-            return true;
-        }
 
         // ---------------------------------------------------------------
         // ALINEACIÓN DE 2 PUNTOS — el corazón del sistema
@@ -377,23 +383,15 @@ namespace Inmersus.FiducialMarkers
             }
         }
 
-        // ---------------------------------------------------------------
-        // Helpers
-        // ---------------------------------------------------------------
-        private static Vector3 Promediar(List<Vector3> lista)
-        {
-            Vector3 sum = Vector3.zero;
-            foreach (var v in lista) sum += v;
-            return sum / lista.Count;
-        }
+
 
         // ---------------------------------------------------------------
         // API pública
         // ---------------------------------------------------------------
         public void ReiniciarMarcadores()
         {
+            _qrPendienteDeConfirmacion = null;
             _anchorsPorMarcador.Clear();
-            _hitsPorMarcador.Clear();
             _confirmados.Clear();
             _posicionesFisicas.Clear();
             _alineacionHecha = false;

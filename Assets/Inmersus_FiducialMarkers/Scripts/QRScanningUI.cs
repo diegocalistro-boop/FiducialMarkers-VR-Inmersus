@@ -16,6 +16,9 @@ namespace Inmersus.FiducialMarkers
         [Tooltip("Referencia al QRDetector de la escena")]
         public QRDetector detectorQR;
 
+        [Tooltip("Referencia al MarkerAnchorManager de la escena")]
+        public MarkerAnchorManager anchorManager;
+
         [Tooltip("Referencia al QRDetectionCoordinator (se busca automáticamente si no se asigna)")]
         public QRDetectionCoordinator coordinador;
 
@@ -68,15 +71,23 @@ namespace Inmersus.FiducialMarkers
             if (coordinador == null)
                 coordinador = FindFirstObjectByType<QRDetectionCoordinator>();
 
+            if (anchorManager == null)
+                anchorManager = FindFirstObjectByType<MarkerAnchorManager>();
+
             CrearUI();
             OcultarPanel();
 
             detectorQR.OnScanningStarted += OnEscaneoIniciado;
-            detectorQR.OnQRDetected     += OnQRDetectado;
             detectorQR.OnCameraError    += OnErrorCamara;
 
             if (coordinador != null)
                 coordinador.OnArenaCalibrated += OnArenaCalibrada;
+
+            if (anchorManager != null)
+            {
+                anchorManager.OnEsperandoConfirmacionUsuario += OnEsperandoConfirmacion;
+                anchorManager.OnMarkerAnchorCreated += OnMarkerConfirmado;
+            }
         }
 
         private void LateUpdate()
@@ -90,11 +101,15 @@ namespace Inmersus.FiducialMarkers
             if (detectorQR != null)
             {
                 detectorQR.OnScanningStarted -= OnEscaneoIniciado;
-                detectorQR.OnQRDetected      -= OnQRDetectado;
                 detectorQR.OnCameraError     -= OnErrorCamara;
             }
             if (coordinador != null)
                 coordinador.OnArenaCalibrated -= OnArenaCalibrada;
+            if (anchorManager != null)
+            {
+                anchorManager.OnEsperandoConfirmacionUsuario -= OnEsperandoConfirmacion;
+                anchorManager.OnMarkerAnchorCreated -= OnMarkerConfirmado;
+            }
         }
 
         // ---------------------------------------------------------------
@@ -111,7 +126,25 @@ namespace Inmersus.FiducialMarkers
             _animacionPuntos = StartCoroutine(AnimarPuntosEscaneo());
         }
 
-        private void OnQRDetectado(string contenido, Vector2[] esquinas)
+        // Se llama cuando MarkerAnchorManager lee un QR y pide validación manual
+        private void OnEsperandoConfirmacion(string markerId)
+        {
+            if (_calibrado) return;
+            if (_animacionPuntos != null) StopCoroutine(_animacionPuntos);
+
+            _textoIcono.text = "👣"; 
+            _textoIcono.color = new Color(0.2f, 0.8f, 1f, 1f); 
+            _textoIcono.fontSize = 54;
+            
+            _textoTitulo.text = $"¡{markerId} detectado!";
+            _textoTitulo.color = _textoIcono.color;
+            
+            _textoInstrucciones.text = "Caminá al marcador físico y presioná el GATILLO";
+            _fondoPanel.color = new Color(0.05f, 0.1f, 0.15f, 0.9f);
+        }
+
+        // Se llama tras presionar el gatillo y crearse el anchor
+        private void OnMarkerConfirmado(string markerId, OVRSpatialAnchor anchor)
         {
             if (_calibrado) return;
 
@@ -126,7 +159,6 @@ namespace Inmersus.FiducialMarkers
                 ActualizarPanelParcial(_escaneados, total);
                 _animacionPuntos = StartCoroutine(AnimarPuntosEscaneo());
             }
-            // Si _escaneados >= total, el evento OnArenaCalibrada lo manejará
         }
 
         private void OnArenaCalibrada()
