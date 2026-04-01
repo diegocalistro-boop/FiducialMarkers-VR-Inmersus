@@ -65,7 +65,7 @@ namespace Inmersus.FiducialMarkers
                 if (marker == null || marker.position == null) continue;
 
                 Vector3 pos = new Vector3(marker.position.x, 0, marker.position.y);
-                float size = marker.size;
+                float size = marker.SizeInMeters;
 
                 // Calcula distancia diagonal desde el origen (0,0)
                 float distDesdeOrigen = Mathf.Sqrt(
@@ -96,9 +96,9 @@ namespace Inmersus.FiducialMarkers
                 // Etiqueta — origen o distancia diagonal
                 string etiqueta;
                 if (distDesdeOrigen < 0.01f)
-                    etiqueta = $"{marker.id}\n← origen (0m, 0m)";
+                    etiqueta = $"ID: {marker.id}\n← origen (0m, 0m)";
                 else
-                    etiqueta = $"{marker.id}\n({marker.position.x}m, {marker.position.y}m)\nDesde origen: ~{distDesdeOrigen:F1}m";
+                    etiqueta = $"ID: {marker.id}\n({marker.position.x}m, {marker.position.y}m)\nDesde origen: ~{distDesdeOrigen:F1}m";
 
                 Handles.Label(pos + new Vector3(0, 0, size / 2 + 0.1f),
                     etiqueta,

@@ -4635,7 +4635,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2113342493
+  GlobalObjectIdHash: 549361835
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -9151,25 +9151,37 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 734336387438993032, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: detectorTag
-      value: 
-      objectReference: {fileID: 565664541}
     - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: marcadores.Array.data[0].id
+      propertyPath: altoArena
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: marcadores.Array.data[1].id
+      propertyPath: anchoArena
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: marcadores.Array.size
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: marcadores.Array.data[0].size
-      value: 20
+      propertyPath: marcadores.Array.data[2].id
+      value: MARKER_04
       objectReference: {fileID: 0}
     - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: marcadores.Array.data[1].size
-      value: 20
+      propertyPath: marcadores.Array.data[0].position.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: marcadores.Array.data[1].position.x
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: marcadores.Array.data[1].position.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: marcadores.Array.data[2].position.x
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 5735861301250072602, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
       propertyPath: passthroughCamera
@@ -9179,76 +9191,17 @@ PrefabInstance:
       propertyPath: m_Name
       value: Inmersus_FiducialSystem
       objectReference: {fileID: 0}
-    - target: {fileID: 6836951730828287612, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: passthroughCamera
-      value: 
-      objectReference: {fileID: 1579019844}
-    - target: {fileID: 7063687505845030742, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: scanningUI
-      value: 
-      objectReference: {fileID: 1766059510}
-    - target: {fileID: 7063687505845030742, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: detectorTag
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: coordinador
-      value: 
-      objectReference: {fileID: 565664539}
-    - target: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: detectorTag
-      value: 
-      objectReference: {fileID: 0}
-    - target: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: anchorManager
-      value: 
-      objectReference: {fileID: 565664540}
-    - target: {fileID: 8664001655957013924, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: 'objetosDeLaArena.Array.data[0]'
-      value: 
-      objectReference: {fileID: 306319660}
-    - target: {fileID: 8664001655957013924, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-      propertyPath: 'objetosDeLaArena.Array.data[1]'
-      value: 
-      objectReference: {fileID: 1020608643}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 5808849023329401963, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1766059510}
+    - targetCorrespondingSourceObject: {fileID: 5808849023329401963, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1766059511}
   m_SourcePrefab: {fileID: 100100000, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
---- !u!114 &565664539 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7063687505845030742, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-  m_PrefabInstance: {fileID: 565664538}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d19bc45f2e92ed6438ec0bd8fb7cb45b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRDetectionCoordinator
---- !u!114 &565664540 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 734336387438993032, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-  m_PrefabInstance: {fileID: 565664538}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e58c00337c026d4993c5b77ac15bb96, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.MarkerAnchorManager
---- !u!114 &565664541 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 6836951730828287612, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
-  m_PrefabInstance: {fileID: 565664538}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d52af4fee3121a4280717860ab4b942, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.AprilTagDetector
 --- !u!1 &572839423
 GameObject:
   m_ObjectHideFlags: 0
@@ -28758,17 +28711,50 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1765596646}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
---- !u!114 &1766059510 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+--- !u!1 &1766059504 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 5808849023329401963, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
   m_PrefabInstance: {fileID: 565664538}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+--- !u!114 &1766059510
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1766059504}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c5d4963f6b6e68942957b24f7320c5ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRScanningUI
+  detectorQR: {fileID: 0}
+  anchorManager: {fileID: 0}
+  coordinador: {fileID: 0}
+  distanciaAlFrente: 2
+  mensajeArenaCalibrada: "\xA1Arena calibrada!"
+  tiempoMensajeExito: 3
+  colorFondo: {r: 0.05, g: 0.05, b: 0.15, a: 0.85}
+  colorTexto: {r: 1, g: 1, b: 1, a: 1}
+  colorExito: {r: 0.2, g: 0.9, b: 0.4, a: 1}
+  colorIcono: {r: 0.4, g: 0.7, b: 1, a: 1}
+  colorParcial: {r: 1, g: 0.8, b: 0.2, a: 1}
+--- !u!114 &1766059511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1766059504}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8d01223e2d1b954583def6867baf74e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.ShowAfterCalibration
+  objetosDeLaArena:
+  - {fileID: 306319660}
+  - {fileID: 1020608643}
+  mostrarMensajesDebug: 1
 --- !u!1 &1772012959
 GameObject:
   m_ObjectHideFlags: 0

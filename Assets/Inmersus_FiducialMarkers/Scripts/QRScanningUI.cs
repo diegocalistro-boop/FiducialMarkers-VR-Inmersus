@@ -13,8 +13,8 @@ namespace Inmersus.FiducialMarkers
     public class QRScanningUI : MonoBehaviour
     {
         [Header("Referencias")]
-        [Tooltip("Referencia al QRDetector de la escena")]
-        public QRDetector detectorQR;
+        [Tooltip("Referencia al AprilTagDetector de la escena")]
+        public AprilTagDetector detectorTag;
 
         [Tooltip("Referencia al MarkerAnchorManager de la escena")]
         public MarkerAnchorManager anchorManager;
@@ -58,12 +58,12 @@ namespace Inmersus.FiducialMarkers
         // ---------------------------------------------------------------
         private void Start()
         {
-            if (detectorQR == null)
+            if (detectorTag == null)
             {
-                detectorQR = FindFirstObjectByType<QRDetector>();
-                if (detectorQR == null)
+                detectorTag = FindFirstObjectByType<AprilTagDetector>();
+                if (detectorTag == null)
                 {
-                    Debug.LogError("[QRScanningUI] No se encontró QRDetector en la escena.");
+                    Debug.LogError("[QRScanningUI] No se encontró AprilTagDetector en la escena.");
                     return;
                 }
             }
@@ -77,8 +77,8 @@ namespace Inmersus.FiducialMarkers
             CrearUI();
             OcultarPanel();
 
-            detectorQR.OnScanningStarted += OnEscaneoIniciado;
-            detectorQR.OnCameraError    += OnErrorCamara;
+            detectorTag.OnScanningStarted += OnEscaneoIniciado;
+            detectorTag.OnCameraError    += OnErrorCamara;
 
             if (coordinador != null)
                 coordinador.OnArenaCalibrated += OnArenaCalibrada;
@@ -98,10 +98,10 @@ namespace Inmersus.FiducialMarkers
 
         private void OnDestroy()
         {
-            if (detectorQR != null)
+            if (detectorTag != null)
             {
-                detectorQR.OnScanningStarted -= OnEscaneoIniciado;
-                detectorQR.OnCameraError     -= OnErrorCamara;
+                detectorTag.OnScanningStarted -= OnEscaneoIniciado;
+                detectorTag.OnCameraError     -= OnErrorCamara;
             }
             if (coordinador != null)
                 coordinador.OnArenaCalibrated -= OnArenaCalibrada;
@@ -126,20 +126,20 @@ namespace Inmersus.FiducialMarkers
             _animacionPuntos = StartCoroutine(AnimarPuntosEscaneo());
         }
 
-        // Se llama cuando MarkerAnchorManager lee un QR y pide validación manual
+        // Se llama cuando MarkerAnchorManager detecta un Tag y lo alinea automáticamente
         private void OnEsperandoConfirmacion(string markerId)
         {
             if (_calibrado) return;
             if (_animacionPuntos != null) StopCoroutine(_animacionPuntos);
 
-            _textoIcono.text = "👣"; 
+            _textoIcono.text = "✨"; 
             _textoIcono.color = new Color(0.2f, 0.8f, 1f, 1f); 
             _textoIcono.fontSize = 54;
             
             _textoTitulo.text = $"¡{markerId} detectado!";
             _textoTitulo.color = _textoIcono.color;
             
-            _textoInstrucciones.text = "Caminá al marcador físico y presioná el GATILLO";
+            _textoInstrucciones.text = "El tag fue registrado y alineado exitosamente.";
             _fondoPanel.color = new Color(0.05f, 0.1f, 0.15f, 0.9f);
         }
 
@@ -190,9 +190,9 @@ namespace Inmersus.FiducialMarkers
             _textoIcono.text = "⬜";
             _textoIcono.color = colorIcono;
             _textoIcono.fontSize = 48;
-            _textoTitulo.text = "Busca y escanea los códigos QR";
+            _textoTitulo.text = "Busca y escanea los AprilTags";
             _textoTitulo.color = colorTexto;
-            _textoInstrucciones.text = "Apuntá el visor hacia un marcador QR del suelo";
+            _textoInstrucciones.text = "Apuntá el visor hacia los marcadores del suelo";
             _textoContador.text = $"0 / {total} escaneados";
             _textoContador.color = colorTexto;
             _fondoPanel.color = colorFondo;
@@ -203,9 +203,9 @@ namespace Inmersus.FiducialMarkers
             _textoIcono.text = "✓";
             _textoIcono.color = colorParcial;
             _textoIcono.fontSize = 48;
-            _textoTitulo.text = $"QR {escaneados} encontrado — ¡busca el siguiente!";
+            _textoTitulo.text = $"Tag {escaneados} encontrado — ¡busca el siguiente!";
             _textoTitulo.color = colorParcial;
-            _textoInstrucciones.text = "Apuntá hacia el otro marcador QR";
+            _textoInstrucciones.text = "Apuntá hacia el otro marcador AprilTag";
             _textoContador.text = $"{escaneados} / {total} escaneados";
             _textoContador.color = colorParcial;
             _fondoPanel.color = new Color(0.08f, 0.12f, 0.05f, 0.85f);
@@ -313,12 +313,12 @@ namespace Inmersus.FiducialMarkers
             // --- Texto título ---
             _textoTitulo = CrearTexto("Titulo", _panelRoot, 30, colorTexto, 44);
             _textoTitulo.fontStyle = FontStyles.Bold;
-            _textoTitulo.text = "Busca y escanea los códigos QR";
+            _textoTitulo.text = "Busca y escanea los AprilTags";
 
             // --- Texto instrucciones ---
             _textoInstrucciones = CrearTexto("Instrucciones", _panelRoot, 22,
                 new Color(colorTexto.r, colorTexto.g, colorTexto.b, 0.7f), 30);
-            _textoInstrucciones.text = "Apuntá el visor hacia un marcador QR";
+            _textoInstrucciones.text = "Apuntá el visor hacia los marcadores";
 
             // --- Contador de progreso (NUEVO) ---
             _textoContador = CrearTexto("Contador", _panelRoot, 26, colorIcono, 36);

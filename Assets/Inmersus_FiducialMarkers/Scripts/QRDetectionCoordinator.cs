@@ -16,7 +16,7 @@ namespace Inmersus.FiducialMarkers
     {
         [Header("Referencias")]
         public MarkerAnchorManager anchorManager;
-        public QRDetector          detectorQR;
+        public AprilTagDetector    detectorTag;
         public QRScanningUI        scanningUI;   // opcional
 
         [Header("Configuración")]
@@ -51,8 +51,8 @@ namespace Inmersus.FiducialMarkers
             if (anchorManager == null)
                 anchorManager = FindFirstObjectByType<MarkerAnchorManager>();
 
-            if (detectorQR == null)
-                detectorQR = FindFirstObjectByType<QRDetector>();
+            if (detectorTag == null)
+                detectorTag = FindFirstObjectByType<AprilTagDetector>();
 
             if (anchorManager == null)
             {
@@ -98,8 +98,8 @@ namespace Inmersus.FiducialMarkers
                 Debug.Log("[QRDetectionCoordinator] ¡Arena calibrada! Todos los marcadores escaneados.");
 
             // Detener el escaneo para ahorrar CPU/batería
-            if (detectorQR != null)
-                detectorQR.StopScanning();
+            if (detectorTag != null)
+                detectorTag.StopScanning();
 
             OnArenaCalibrated?.Invoke();
         }
@@ -120,8 +120,8 @@ namespace Inmersus.FiducialMarkers
             if (anchorManager != null)
                 anchorManager.ReiniciarMarcadores();
 
-            if (detectorQR != null)
-                detectorQR.StartScanning();
+            if (detectorTag != null)
+                detectorTag.StartScanning();
 
             if (mostrarMensajesDebug)
                 Debug.Log("[QRDetectionCoordinator] Calibración reiniciada.");

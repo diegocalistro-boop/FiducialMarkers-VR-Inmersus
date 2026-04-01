@@ -16,8 +16,14 @@ namespace Inmersus.FiducialMarkers
     public class MarkerConfig
     {
         public string id;
-        public float size;
+
+        [Tooltip("Tamaño del lado del marcador en centímetros. Ej: 20 para 20cm")]
+        public float size; // en centímetros
+
         public MarkerPosition position;
+
+        /// <summary>Tamaño en metros (para uso interno del engine).</summary>
+        public float SizeInMeters => size / 100f;
     }
 
     [Serializable]

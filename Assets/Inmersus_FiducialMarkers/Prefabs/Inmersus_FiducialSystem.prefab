@@ -10,9 +10,11 @@ GameObject:
   m_Component:
   - component: {fileID: 586438279090613881}
   - component: {fileID: 4804401823177574682}
-  - component: {fileID: 5735861301250072602}
   - component: {fileID: 734336387438993032}
   - component: {fileID: 7063687505845030742}
+  - component: {fileID: 6836951730828287612}
+  - component: {fileID: 7454772276891711902}
+  - component: {fileID: 8664001655957013924}
   m_Layer: 0
   m_Name: Inmersus_FiducialSystem
   m_TagString: Untagged
@@ -48,8 +50,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.ArenaConfig
   nombreArena: Arena Principal
-  anchoArena: 6
-  altoArena: 6
+  anchoArena: 1
+  altoArena: 1
   marcadores:
   - id: MARKER_01
     size: 0.2
@@ -59,33 +61,8 @@ MonoBehaviour:
   - id: MARKER_02
     size: 0.2
     position:
-      x: 5
-      y: 0
-  - id: MARKER_03
-    size: 0.2
-    position:
-      x: 0
-      y: 5
-  - id: MARKER_04
-    size: 0.2
-    position:
-      x: 5
-      y: 5
-  mostrarMensajesDebug: 1
---- !u!114 &5735861301250072602
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5808849023329401963}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d52af4fee3121a4280717860ab4b942, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRDetector
-  passthroughCamera: {fileID: 0}
-  segundosEntreEscaneos: 0.2
+      x: 1
+      y: 1
   mostrarMensajesDebug: 1
 --- !u!114 &734336387438993032
 MonoBehaviour:
@@ -99,7 +76,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e58c00337c026d4993c5b77ac15bb96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.MarkerAnchorManager
-  detectorQR: {fileID: 5735861301250072602}
+  detectorTag: {fileID: 0}
   anchorPrefab: {fileID: 1978002011806910258, guid: cd2360f6c9f3b3b4f90f53cac91a9698, type: 3}
   mostrarMensajesDebug: 1
 --- !u!114 &7063687505845030742
@@ -115,7 +92,62 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRDetectionCoordinator
   anchorManager: {fileID: 734336387438993032}
-  detectorQR: {fileID: 5735861301250072602}
+  detectorTag: {fileID: 0}
   scanningUI: {fileID: 0}
   anchorsNecesarios: 2
+  mostrarMensajesDebug: 1
+--- !u!114 &6836951730828287612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5808849023329401963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d52af4fee3121a4280717860ab4b942, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.AprilTagDetector
+  passthroughCamera: {fileID: 0}
+  tagSize: 0.15
+  segundosEntreEscaneos: 0.1
+  mostrarMensajesDebug: 1
+--- !u!114 &7454772276891711902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5808849023329401963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5d4963f6b6e68942957b24f7320c5ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.QRScanningUI
+  detectorTag: {fileID: 0}
+  anchorManager: {fileID: 0}
+  coordinador: {fileID: 0}
+  distanciaAlFrente: 2
+  mensajeArenaCalibrada: "\xA1Arena calibrada!"
+  tiempoMensajeExito: 3
+  colorFondo: {r: 0.05, g: 0.05, b: 0.15, a: 0.85}
+  colorTexto: {r: 1, g: 1, b: 1, a: 1}
+  colorExito: {r: 0.2, g: 0.9, b: 0.4, a: 1}
+  colorIcono: {r: 0.4, g: 0.7, b: 1, a: 1}
+  colorParcial: {r: 1, g: 0.8, b: 0.2, a: 1}
+--- !u!114 &8664001655957013924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5808849023329401963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8d01223e2d1b954583def6867baf74e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.ShowAfterCalibration
+  objetosDeLaArena:
+  - {fileID: 0}
+  - {fileID: 0}
   mostrarMensajesDebug: 1

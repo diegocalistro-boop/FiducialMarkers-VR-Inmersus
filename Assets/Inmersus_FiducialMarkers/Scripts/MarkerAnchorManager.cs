@@ -23,7 +23,7 @@ namespace Inmersus.FiducialMarkers
     public class MarkerAnchorManager : MonoBehaviour
     {
         [Header("Referencias")]
-        public QRDetector detectorQR;
+        public AprilTagDetector detectorTag;
 
         [Tooltip("Prefab que contiene OVRSpatialAnchor")]
         public GameObject anchorPrefab;
@@ -62,9 +62,9 @@ namespace Inmersus.FiducialMarkers
         // ---------------------------------------------------------------
         private void Start()
         {
-            if (detectorQR == null)
+            if (detectorTag == null)
             {
-                Debug.LogError("[MarkerAnchorManager] Falta asignar el QRDetector.");
+                Debug.LogError("[MarkerAnchorManager] Falta asignar el AprilTagDetector.");
                 return;
             }
             if (anchorPrefab == null)
@@ -73,7 +73,7 @@ namespace Inmersus.FiducialMarkers
                 return;
             }
 
-            detectorQR.OnQRDetected += OnQRDetected;
+            detectorTag.OnTagDetected += OnTagDetected;
 
             if (mostrarMensajesDebug)
                 Debug.Log("[MarkerAnchorManager] Sistema de alineación de 2 puntos iniciado. Escaneá los QR del piso.");
@@ -81,88 +81,69 @@ namespace Inmersus.FiducialMarkers
 
         private void OnDestroy()
         {
-            if (detectorQR != null)
-                detectorQR.OnQRDetected -= OnQRDetected;
+            if (detectorTag != null)
+                detectorTag.OnTagDetected -= OnTagDetected;
         }
 
         // ---------------------------------------------------------------
-        // Callback del detector — ZXing lee el QR identificador
+        // Callback del detector — AprilTag lee el ID y la postura 3D
         // ---------------------------------------------------------------
-        private void OnQRDetected(string qrContent, Vector2[] corners)
+        private void OnTagDetected(int tagID, Vector3 localPos, Quaternion localRot)
         {
-            // Si ya estamos esperando que el usuario confirme un QR, ignoramos nuevas lecturas
-            if (!string.IsNullOrEmpty(_qrPendienteDeConfirmacion))
-                return;
+            string qrContent = tagID.ToString();
 
-            // Verificar si este QR ya fue confirmado exitosamente
+            // Verificar si este Tag ya fue confirmado exitosamente
             if (_confirmados.ContainsKey(qrContent))
                 return;
 
             // Verificar que esté en la configuración
             MarkerConfig config = ArenaConfig.Instance?.GetMarkerById(qrContent);
             if (config == null)
+                return; // Ignorar silencio para no hacer spam si hay tags irrelevantes
+
+            // Obtener la pose REAL de la cámara passthrough (relativa al Tracking Space)
+            Pose cameraPose;
+            if (detectorTag.passthroughCamera != null && detectorTag.passthroughCamera.IsPlaying)
             {
-                if (mostrarMensajesDebug)
-                    Debug.LogWarning($"[MarkerAnchorManager] QR '{qrContent}' no está en arena_config.json. Ignorado.");
-                return;
+                cameraPose = detectorTag.passthroughCamera.GetCameraPose();
+            }
+            else
+            {
+                Camera cam = Camera.main;
+                if (cam == null) return;
+                // Fallback: usar el transform local asumiendo que Camera es hija directa de TrackingSpace
+                cameraPose = new Pose(cam.transform.localPosition, cam.transform.localRotation);
             }
 
-            // Pasamos al estado de esperar confirmación manual
-            _qrPendienteDeConfirmacion = qrContent;
-
-            if (mostrarMensajesDebug)
-                Debug.Log($"[MarkerAnchorManager] QR detectado '{qrContent}'. Esperando confirmación con el gatillo...");
-
-            // Notificamos a la UI
-            OnEsperandoConfirmacionUsuario?.Invoke(qrContent);
-        }
-
-        // ---------------------------------------------------------------
-        // Input del usuario — Confirmación de posición
-        // ---------------------------------------------------------------
-        private void Update()
-        {
-            if (string.IsNullOrEmpty(_qrPendienteDeConfirmacion)) 
-                return;
-
-            bool triggerPressed = false;
-
-            // Soporte Input System o viejo Input (Simulación para el Editor)
-            #if UNITY_EDITOR
-            if (Input.GetKeyDown(KeyCode.Space))
-                triggerPressed = true;
-            #endif
-
-            // Gatillo del visor (Quest)
-            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) || 
-                OVRInput.GetDown(OVRInput.Button.SecondaryIndexTrigger))
+            // Escalar la distancia según el tamaño FÍSICO REAL en ArenaConfig
+            float scaleFactor = 1f;
+            if (detectorTag != null && detectorTag.tagSize > 0f)
             {
-                triggerPressed = true;
+                scaleFactor = config.SizeInMeters / detectorTag.tagSize;
             }
+            Vector3 correctedLocalPos = localPos * scaleFactor;
 
-            if (triggerPressed)
-            {
-                ConfirmarPosicionQR(_qrPendienteDeConfirmacion);
-            }
-        }
+            // Transformar la posición detectada al espacio de tracking
+            Vector3 posTrackingSpace = cameraPose.position + cameraPose.rotation * correctedLocalPos;
 
-        private void ConfirmarPosicionQR(string qrContent)
-        {
-            Camera cam = Camera.main;
-            if (cam == null) return;
-
-            // Capturamos la posición del visor con Y=0
-            Vector3 posFinal = new Vector3(cam.transform.position.x, 0f, cam.transform.position.z);
+            // Convertir de Tracking Space a World Space con el OVRCameraRig
+            OVRCameraRig rig = FindFirstObjectByType<OVRCameraRig>();
+            Vector3 posFinal = rig != null && rig.trackingSpace != null 
+                ? rig.trackingSpace.TransformPoint(posTrackingSpace) 
+                : posTrackingSpace;
             
-            // Limpiamos el estado transitorio
-            _qrPendienteDeConfirmacion = null;
+            // Forzar altura al piso (z=0 en el mundo real, y=0 en Unity)
+            posFinal.y = 0f;
 
             // Marcamos como confirmado y guardamos
             _confirmados[qrContent] = true;
             _posicionesFisicas[qrContent] = posFinal;
 
             if (mostrarMensajesDebug)
-                Debug.Log($"[MarkerAnchorManager] *** '{qrContent}' CONFIRMADO MANUALMENTE *** Pos física: {posFinal:F3}");
+                Debug.Log($"[MarkerAnchorManager] *** AprilTag ID '{qrContent}' DETECTADO Y ALINEADO AUTO *** Pos física: {posFinal:F3}");
+
+            // Notificamos a la UI para mostrar el feedback visual corto
+            OnEsperandoConfirmacionUsuario?.Invoke($"Tag {qrContent}");
 
             // Crear el anchor en esa posición
             _ = CrearAnchor(qrContent, posFinal);

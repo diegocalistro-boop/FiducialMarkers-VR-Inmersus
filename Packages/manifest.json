@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "jp.keijiro.apriltag": "1.0.2",
     "com.meta.xr.mrutilitykit": "85.0.0",
     "com.meta.xr.sdk.core": "85.0.0",
     "com.meta.xr.sdk.interaction": "85.0.0",
@@ -52,6 +53,14 @@
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
   },
-  "scopedRegistries": [],
+  "scopedRegistries": [
+    {
+      "name": "Keijiro",
+      "url": "https://registry.npmjs.com",
+      "scopes": [
+        "jp.keijiro"
+      ]
+    }
+  ],
   "enableLockFile": false
 }
