@@ -154,22 +154,26 @@ namespace Inmersus.FiducialMarkers
                 if (!colors.IsCreated || colors.Length == 0)
                     return;
 
-                // Calcular FOV horizontal real desde los intrínsecos de la cámara passthrough.
-                // FOV = 2 * atan(sensorWidth / (2 * focalLength))
+                // Calcular FOV para el paquete de Keijiro.
+                // IMPORTANTE: jp.keijiro.apriltag calcula internamente la focal así:
+                // focalLength = height / 2 / math.tan(fov / 2)
+                // Esto significa que 'fov' debe ser el FOV VERTICAL en RADIANES.
                 var intrinsics = passthroughCamera.Intrinsics;
                 float fov;
-                if (intrinsics.FocalLength.x > 0 && intrinsics.SensorResolution.x > 0)
+                if (intrinsics.FocalLength.y > 0 && intrinsics.SensorResolution.y > 0)
                 {
-                    fov = 2f * Mathf.Atan2(intrinsics.SensorResolution.x * 0.5f, intrinsics.FocalLength.x) * Mathf.Rad2Deg;
+                    // Despejamos el fov para que Keijiro obtenga exactamente nuestro FocalLength.y real.
+                    fov = 2f * Mathf.Atan(intrinsics.SensorResolution.y / (2f * intrinsics.FocalLength.y));
+                    
                     if (mostrarMensajesDebug && Time.frameCount % 300 == 0)
-                        Debug.Log($"[AprilTagDetector] FOV horizontal real de la cámara passthrough: {fov:F1}°");
+                        Debug.Log($"[AprilTagDetector] FOV vertical en radianes inyectado a Keijiro: {fov:F3}");
                 }
                 else
                 {
-                    // Fallback si los intrínsecos no están disponibles
-                    fov = 60f;
+                    // Fallback usando Camera.main.fieldOfView (que ya es vertical, lo pasamos a radianes)
+                    fov = Camera.main != null ? Camera.main.fieldOfView * Mathf.Deg2Rad : 1.0f;
                     if (mostrarMensajesDebug && Time.frameCount % 300 == 0)
-                        Debug.LogWarning("[AprilTagDetector] Intrínsecos no disponibles, usando FOV fallback de 60°");
+                        Debug.LogWarning("[AprilTagDetector] Intrínsecos no disponibles, usando FOV vertical de fallback");
                 }
 
                 var pixels = colors.ToArray();

@@ -78,6 +78,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.MarkerAnchorManager
   detectorTag: {fileID: 0}
   anchorPrefab: {fileID: 1978002011806910258, guid: cd2360f6c9f3b3b4f90f53cac91a9698, type: 3}
+  arenaRoot: {fileID: 0}
   mostrarMensajesDebug: 1
 --- !u!114 &7063687505845030742
 MonoBehaviour:
@@ -109,7 +110,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.AprilTagDetector
   passthroughCamera: {fileID: 0}
-  tagSize: 0.15
+  tagSizeCm: 20
   segundosEntreEscaneos: 0.1
   mostrarMensajesDebug: 1
 --- !u!114 &7454772276891711902

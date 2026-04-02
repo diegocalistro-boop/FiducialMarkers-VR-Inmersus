@@ -85,7 +85,7 @@ namespace Inmersus.FiducialMarkers
 
             if (anchorManager != null)
             {
-                anchorManager.OnEsperandoConfirmacionUsuario += OnEsperandoConfirmacion;
+                anchorManager.OnInstruccionInteractiva += OnInstruccionActualizada;
                 anchorManager.OnMarkerAnchorCreated += OnMarkerConfirmado;
             }
         }
@@ -107,7 +107,7 @@ namespace Inmersus.FiducialMarkers
                 coordinador.OnArenaCalibrated -= OnArenaCalibrada;
             if (anchorManager != null)
             {
-                anchorManager.OnEsperandoConfirmacionUsuario -= OnEsperandoConfirmacion;
+                anchorManager.OnInstruccionInteractiva -= OnInstruccionActualizada;
                 anchorManager.OnMarkerAnchorCreated -= OnMarkerConfirmado;
             }
         }
@@ -126,21 +126,45 @@ namespace Inmersus.FiducialMarkers
             _animacionPuntos = StartCoroutine(AnimarPuntosEscaneo());
         }
 
-        // Se llama cuando MarkerAnchorManager detecta un Tag y lo alinea automáticamente
-        private void OnEsperandoConfirmacion(string markerId)
+        // Se llama cuando MarkerAnchorManager requiere acción del usuario
+        private void OnInstruccionActualizada(string titulo, string instrucciones, int paso)
         {
             if (_calibrado) return;
             if (_animacionPuntos != null) StopCoroutine(_animacionPuntos);
 
-            _textoIcono.text = "✨"; 
-            _textoIcono.color = new Color(0.2f, 0.8f, 1f, 1f); 
+            // Asignar colores vibrantes dependiendo del paso
+            Color colorActivo;
+            string iconoActivo;
+
+            switch (paso)
+            {
+                case 1: // Apuntando al láser
+                    colorActivo = new Color(1f, 0.75f, 0.2f, 1f); // Naranja
+                    iconoActivo = "🎯";
+                    break;
+                case 2: // Confirmando posición
+                    colorActivo = new Color(0.9f, 0.3f, 0.8f, 1f); // Magenta/Rosa
+                    iconoActivo = "❓";
+                    break;
+                case 3: // Éxito / Fijado
+                    colorActivo = new Color(0.2f, 0.9f, 0.4f, 1f); // Verde
+                    iconoActivo = "✨";
+                    break;
+                default:
+                    colorActivo = colorIcono;
+                    iconoActivo = "⬜";
+                    break;
+            }
+
+            _textoIcono.text = iconoActivo;
+            _textoIcono.color = colorActivo;
             _textoIcono.fontSize = 54;
             
-            _textoTitulo.text = $"¡{markerId} detectado!";
-            _textoTitulo.color = _textoIcono.color;
+            _textoTitulo.text = titulo;
+            _textoTitulo.color = colorActivo;
             
-            _textoInstrucciones.text = "El tag fue registrado y alineado exitosamente.";
-            _fondoPanel.color = new Color(0.05f, 0.1f, 0.15f, 0.9f);
+            _textoInstrucciones.text = instrucciones;
+            _fondoPanel.color = new Color(0.05f, 0.08f, 0.12f, 0.95f);
         }
 
         // Se llama tras presionar el gatillo y crearse el anchor

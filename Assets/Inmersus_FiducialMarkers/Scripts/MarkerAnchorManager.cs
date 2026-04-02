@@ -6,14 +6,16 @@ using UnityEngine;
 namespace Inmersus.FiducialMarkers
 {
     /// <summary>
-    /// ALINEACIÓN DE 2 PUNTOS:
+    /// ALINEACIÓN DE 2 PUNTOS (ArenaRoot):
     /// 
     /// 1. Escanea QR_01 → guarda su posición FÍSICA (anchor en el piso)
     /// 2. Escanea QR_02 → guarda su posición FÍSICA (anchor en el piso)
     /// 3. Con las 2 posiciones FÍSICAS + las 2 posiciones del JSON (que son las
     ///    coordenadas en UNITY), calcula la transformación rígida (traslación + rotación yaw)
     ///    que convierte el espacio Unity al espacio físico.
-    /// 4. Mueve el OVRCameraRig para que ambos mundos coincidan.
+    /// 4. Mueve el ArenaRoot (contenedor de objetos del escenario) para alinear
+    ///    el contenido virtual con el espacio físico. NO se toca el OVRCameraRig,
+    ///    lo que preserva las físicas, el grab y la sincronización de red.
     /// 5. Todos los jugadores que escaneen los mismos QR ven lo mismo.
     ///
     /// Los QR del piso definen un sistema de coordenadas XZ:
@@ -28,6 +30,10 @@ namespace Inmersus.FiducialMarkers
         [Tooltip("Prefab que contiene OVRSpatialAnchor")]
         public GameObject anchorPrefab;
 
+        [Header("Arena")]
+        [Tooltip("GameObject raíz que contiene todos los objetos del escenario (Cube, Cylinder, luces, etc.). Se mueve/rota para alinear el contenido virtual con el espacio físico.")]
+        public Transform arenaRoot;
+
         [Header("Debug")]
         public bool mostrarMensajesDebug = true;
 
@@ -37,25 +43,28 @@ namespace Inmersus.FiducialMarkers
         public event System.Action<string, OVRSpatialAnchor> OnMarkerAnchorCreated;
         
         /// <summary>
-        /// Se dispara cuando el sistema detectó un QR y está esperando
-        /// que el usuario presione el gatillo para confirmar su posición.
+        /// Se dispara para actualizar la interfaz interactiva.
+        /// Args: Titulo, Instrucciones, TipoDePaso (0=buscando, 1=apuntando, 2=confirmando, 3=exito)
         /// </summary>
-        public event System.Action<string> OnEsperandoConfirmacionUsuario;
+        public event System.Action<string, string, int> OnInstruccionInteractiva;
 
         // ---------------------------------------------------------------
         // Estado
         // ---------------------------------------------------------------
-        private string _qrPendienteDeConfirmacion;
         private readonly Dictionary<string, bool> _confirmados = new();
-
-        // Posiciones FÍSICAS confirmadas (en espacio del headset/mundo Meta)
         private readonly Dictionary<string, Vector3> _posicionesFisicas = new();
-
-        // Anchors creados
         private readonly Dictionary<string, OVRSpatialAnchor> _anchorsPorMarcador = new();
 
-        private bool   _alineacionHecha = false;
-        private int    _anchorsPendientes = 0;
+        private bool _alineacionHecha = false;
+
+        // Estado Máquina Manual (Point & Shoot)
+        private enum EstadoPosicionamiento { Inactivo, Apuntando, ListoParaConfirmar }
+        private EstadoPosicionamiento _estadoActual = EstadoPosicionamiento.Inactivo;
+        private string _tagActivo = "";
+        private GameObject _anchorGhost;
+        private LineRenderer _laserRenderer;
+        private OVRCameraRig _cameraRigCache;
+        private Vector3 _ultimoRayoHit;
 
         // ---------------------------------------------------------------
         // Unity lifecycle
@@ -63,20 +72,29 @@ namespace Inmersus.FiducialMarkers
         private void Start()
         {
             if (detectorTag == null)
-            {
                 Debug.LogError("[MarkerAnchorManager] Falta asignar el AprilTagDetector.");
-                return;
-            }
             if (anchorPrefab == null)
-            {
                 Debug.LogError("[MarkerAnchorManager] Falta asignar el anchorPrefab.");
-                return;
-            }
+            if (arenaRoot == null)
+                Debug.LogError("[MarkerAnchorManager] Falta asignar el ArenaRoot. Los objetos del escenario no se alinearán.");
 
             detectorTag.OnTagDetected += OnTagDetected;
 
+            _cameraRigCache = FindFirstObjectByType<OVRCameraRig>();
+
+            // Crear el láser dinámico
+            GameObject laserR = new GameObject("LaserAnchorPlacement");
+            laserR.transform.SetParent(transform);
+            _laserRenderer = laserR.AddComponent<LineRenderer>();
+            _laserRenderer.startWidth = 0.005f;
+            _laserRenderer.endWidth = 0.005f;
+            _laserRenderer.material = new Material(Shader.Find("Sprites/Default"));
+            _laserRenderer.startColor = Color.red;
+            _laserRenderer.endColor = Color.red;
+            _laserRenderer.enabled = false;
+
             if (mostrarMensajesDebug)
-                Debug.Log("[MarkerAnchorManager] Sistema de alineación de 2 puntos iniciado. Escaneá los QR del piso.");
+                Debug.Log("[MarkerAnchorManager] Sistema Point&Shoot iniciado. Escaneá los QR del piso.");
         }
 
         private void OnDestroy()
@@ -85,11 +103,87 @@ namespace Inmersus.FiducialMarkers
                 detectorTag.OnTagDetected -= OnTagDetected;
         }
 
+        private void Update()
+        {
+            if (_estadoActual == EstadoPosicionamiento.Inactivo || _cameraRigCache == null)
+                return;
+
+            Transform controlDerecho = _cameraRigCache.rightControllerAnchor;
+            if (controlDerecho == null) return;
+
+            // Calcular intersección del láser con Y=0 del tracking space
+            Vector3 origin = controlDerecho.position;
+            Vector3 direction = controlDerecho.forward;
+            
+            // Queremos y=0 en tracking space. Para simplicidad, si Guardian está activo, origin.y es relativo al piso.
+            // t = (targetY - origin.y) / direction.y
+            float t = (0f - origin.y) / direction.y;
+            
+            if (t > 0f && t < 10f) 
+            {
+                _ultimoRayoHit = origin + direction * t;
+                _laserRenderer.enabled = true;
+                _laserRenderer.SetPosition(0, origin);
+                _laserRenderer.SetPosition(1, _ultimoRayoHit);
+            }
+            else
+            {
+                _laserRenderer.enabled = false;
+            }
+
+            // GATILLO: Colocar / Mover Ancla
+            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, OVRInput.Controller.RTouch))
+            {
+                if (_anchorGhost != null)
+                {
+                    Destroy(_anchorGhost);
+                }
+                
+                _anchorGhost = Instantiate(anchorPrefab, _ultimoRayoHit, Quaternion.identity);
+                
+                _estadoActual = EstadoPosicionamiento.ListoParaConfirmar;
+                OnInstruccionInteractiva?.Invoke("Confirma la posición", "¿Quedó bien alineado? Pulsa el botón 'A' para confirmar\no vuelve a apuntar y presiona Gatillo para moverlo.", 2);
+            }
+
+
+            // BOTÓN A: Confirmar y Guardar
+            if (_estadoActual == EstadoPosicionamiento.ListoParaConfirmar && OVRInput.GetDown(OVRInput.Button.One))
+            {
+                ConfirmarPosicionManual();
+            }
+        }
+
+        private async void ConfirmarPosicionManual()
+        {
+            _estadoActual = EstadoPosicionamiento.Inactivo;
+            _laserRenderer.enabled = false;
+
+            Vector3 posFinal = _anchorGhost.transform.position;
+            string idConfirmado = _tagActivo;
+
+            _posicionesFisicas[idConfirmado] = posFinal;
+            _confirmados[idConfirmado] = true;
+
+            Destroy(_anchorGhost);
+            _anchorGhost = null;
+            _tagActivo = "";
+
+            OnInstruccionInteractiva?.Invoke($"¡Tag {idConfirmado} anclado!", "Procesando posición...", 3);
+
+            await CrearAnchor(idConfirmado, posFinal);
+            TryAlinear();
+        }
+
         // ---------------------------------------------------------------
-        // Callback del detector — AprilTag lee el ID y la postura 3D
+        // ---------------------------------------------------------------
+        // Callback del detector — AprilTag lee el ID
         // ---------------------------------------------------------------
         private void OnTagDetected(int tagID, Vector3 localPos, Quaternion localRot)
         {
+            // Solo actura si estamos libres
+            if (_estadoActual != EstadoPosicionamiento.Inactivo)
+                return;
+
             string qrContent = tagID.ToString();
 
             // Verificar si este Tag ya fue confirmado exitosamente
@@ -99,57 +193,16 @@ namespace Inmersus.FiducialMarkers
             // Verificar que esté en la configuración
             MarkerConfig config = ArenaConfig.Instance?.GetMarkerById(qrContent);
             if (config == null)
-                return; // Ignorar silencio para no hacer spam si hay tags irrelevantes
+                return; // Ignorar silencio
 
-            // Obtener la pose REAL de la cámara passthrough (relativa al Tracking Space)
-            Pose cameraPose;
-            if (detectorTag.passthroughCamera != null && detectorTag.passthroughCamera.IsPlaying)
-            {
-                cameraPose = detectorTag.passthroughCamera.GetCameraPose();
-            }
-            else
-            {
-                Camera cam = Camera.main;
-                if (cam == null) return;
-                // Fallback: usar el transform local asumiendo que Camera es hija directa de TrackingSpace
-                cameraPose = new Pose(cam.transform.localPosition, cam.transform.localRotation);
-            }
-
-            // Escalar la distancia según el tamaño FÍSICO REAL en ArenaConfig
-            float scaleFactor = 1f;
-            if (detectorTag != null && detectorTag.tagSize > 0f)
-            {
-                scaleFactor = config.SizeInMeters / detectorTag.tagSize;
-            }
-            Vector3 correctedLocalPos = localPos * scaleFactor;
-
-            // Transformar la posición detectada al espacio de tracking
-            Vector3 posTrackingSpace = cameraPose.position + cameraPose.rotation * correctedLocalPos;
-
-            // Convertir de Tracking Space a World Space con el OVRCameraRig
-            OVRCameraRig rig = FindFirstObjectByType<OVRCameraRig>();
-            Vector3 posFinal = rig != null && rig.trackingSpace != null 
-                ? rig.trackingSpace.TransformPoint(posTrackingSpace) 
-                : posTrackingSpace;
-            
-            // Forzar altura al piso (z=0 en el mundo real, y=0 en Unity)
-            posFinal.y = 0f;
-
-            // Marcamos como confirmado y guardamos
-            _confirmados[qrContent] = true;
-            _posicionesFisicas[qrContent] = posFinal;
+            // Iniciar modo Point & Shoot
+            _tagActivo = qrContent;
+            _estadoActual = EstadoPosicionamiento.Apuntando;
 
             if (mostrarMensajesDebug)
-                Debug.Log($"[MarkerAnchorManager] *** AprilTag ID '{qrContent}' DETECTADO Y ALINEADO AUTO *** Pos física: {posFinal:F3}");
+                Debug.Log($"[MarkerAnchorManager] Tag {qrContent} visualizado. Activando Láser.");
 
-            // Notificamos a la UI para mostrar el feedback visual corto
-            OnEsperandoConfirmacionUsuario?.Invoke($"Tag {qrContent}");
-
-            // Crear el anchor en esa posición
-            _ = CrearAnchor(qrContent, posFinal);
-
-            // Si ya tenemos 2+ posiciones, intentar alinear
-            TryAlinear();
+            OnInstruccionInteractiva?.Invoke($"¡Tag {qrContent} detectado!", "Apunta con tu láser (control derecho) al centro de la hoja impresa y presiona el GATILLO.", 1);
         }
 
 
@@ -199,10 +252,11 @@ namespace Inmersus.FiducialMarkers
             Vector3 vecUni = new Vector3(uniP1.x - uniP0.x, 0f, uniP1.z - uniP0.z);
 
             // --- Ángulo de rotación (yaw) necesario ---
-            // Ángulo del vector Unity al vector Físico (en grados, alrededor de Y)
+            // Queremos rotar el mundo físico (vecFis) para que se alinee con el virtual (vecUni).
+            // Rotación delta = anguloUni - anguloFis
             float anguloFis = Mathf.Atan2(vecFis.x, vecFis.z) * Mathf.Rad2Deg;
             float anguloUni = Mathf.Atan2(vecUni.x, vecUni.z) * Mathf.Rad2Deg;
-            float yawCorreccion = anguloFis - anguloUni;
+            float yawCorreccion = Mathf.DeltaAngle(anguloFis, anguloUni);
 
             // --- Escala (por si la arena física no es exactamente 1:1) ---
             float distFis = vecFis.magnitude;
@@ -218,8 +272,8 @@ namespace Inmersus.FiducialMarkers
                 Debug.Log($"  Escala: {escala:F3}  |  Yaw: {yawCorreccion:F1}°");
             }
 
-            // --- Aplicar transformación al OVRCameraRig ---
-            AplicarAlineacion(fisP0, uniP0, yawCorreccion, escala);
+            // --- Aplicar transformación al ArenaRoot ---
+            AplicarAlineacion(fisP0, uniP0, yawCorreccion);
 
             // --- Publicar alineación por Photon ---
             if (PhotonNetwork.InRoom && _anchorsPorMarcador.ContainsKey(m0.id) && _anchorsPorMarcador[m0.id] != null)
@@ -234,59 +288,42 @@ namespace Inmersus.FiducialMarkers
         }
 
         /// <summary>
-        /// Mueve el OVRCameraRig (tracking space) para que:
-        ///  - El punto Unity uniP0 quede exactamente en la posición física fisP0
-        ///  - La orientación esté rotada por yawCorreccion grados en Y
+        /// Mueve el ArenaRoot (contenedor de objetos del escenario) para que:
+        ///  - Los objetos en coordenadas Unity se posicionen en las coordenadas físicas correctas
+        ///  - NO se toca el trackingSpace → las manos, controladores, físicas y grab funcionan normal
+        ///
+        /// Matemática:
+        ///  - yawGrados es el ángulo Físico→Unity (calculado en TryAlinear)
+        ///  - Para ArenaRoot necesitamos el ángulo Unity→Físico = -yawGrados
+        ///  - Posicionamos ArenaRoot de modo que: ArenaRoot.TransformPoint(uniP0) == fisP0
         /// </summary>
-        private void AplicarAlineacion(Vector3 fisP0, Vector3 uniP0, float yawGrados, float escala)
+        private void AplicarAlineacion(Vector3 fisP0, Vector3 uniP0, float yawGrados)
         {
-            // Buscar el tracking space (OVRCameraRig)
-            OVRCameraRig cameraRig = FindFirstObjectByType<OVRCameraRig>();
-            if (cameraRig == null)
+            if (arenaRoot == null)
             {
-                Debug.LogError("[MarkerAnchorManager] No se encontró OVRCameraRig para alinear.");
+                Debug.LogError("[MarkerAnchorManager] No se asignó ArenaRoot. Los objetos no se alinearán.");
                 return;
             }
 
-            Transform trackingSpace = cameraRig.trackingSpace;
-            if (trackingSpace == null)
-            {
-                Debug.LogError("[MarkerAnchorManager] OVRCameraRig no tiene trackingSpace.");
-                return;
-            }
+            // Invertir el yaw: antes movíamos el observador (trackingSpace) hacia Unity,
+            // ahora movemos el contenido (ArenaRoot) hacia el espacio físico.
+            float yawArena = -yawGrados;
+            Quaternion rotArena = Quaternion.Euler(0f, yawArena, 0f);
 
-            // 1. Crear la rotación de corrección (solo yaw)
-            Quaternion rotCorreccion = Quaternion.Euler(0f, yawGrados, 0f);
+            // 1. Aplicar rotación al ArenaRoot
+            arenaRoot.rotation = rotArena;
 
-            // 2. El punto Unity uniP0 en el mundo (después de escalar y rotar) debe quedar en fisP0
-            //    Fórmula: fisP0 = trackingSpace.position + rotCorreccion * (uniP0 * escala)
-            //    →  trackingSpace.position = fisP0 - rotCorreccion * (uniP0 * escala)
-            //
-            //    Pero como OVRCameraRig ya está en el espacio de tracking, necesitamos
-            //    transformar el tracking space para que el mapeo sea correcto.
-
-            // Posición original del tracking space
-            Vector3 origPos = trackingSpace.position;
-            Quaternion origRot = trackingSpace.rotation;
-
-            // Donde caería uniP0 en el espacio mundo actual del rig
-            Vector3 uniP0EnMundo = trackingSpace.TransformPoint(uniP0);
-
-            // Aplicar rotación primero (rotar tracking space alrededor de fisP0)
-            trackingSpace.rotation = rotCorreccion * origRot;
-
-            // Recalcular dónde queda uniP0 después de rotar
-            uniP0EnMundo = trackingSpace.TransformPoint(uniP0);
-
-            // Traslación: mover tracking space para que uniP0EnMundo = fisP0
-            Vector3 offset = fisP0 - uniP0EnMundo;
-            trackingSpace.position += offset;
+            // 2. Posicionar ArenaRoot para que su punto local uniP0 quede en fisP0 (world)
+            //    ArenaRoot.TransformPoint(uniP0) == fisP0
+            //    => arenaRoot.position + rotArena * uniP0 == fisP0
+            //    => arenaRoot.position = fisP0 - rotArena * uniP0
+            arenaRoot.position = fisP0 - rotArena * uniP0;
 
             if (mostrarMensajesDebug)
             {
-                // Verificación: dónde queda uniP0 ahora
-                Vector3 verificacion = trackingSpace.TransformPoint(uniP0);
-                Debug.Log($"[MarkerAnchorManager] TrackingSpace movido. Verificación — uniP0 debería estar en {fisP0:F3}, está en {verificacion:F3}");
+                Debug.Log($"[MarkerAnchorManager] ArenaRoot alineado:");
+                Debug.Log($"  Posición: {arenaRoot.position:F3}  |  Rotación Y: {yawArena:F1}°");
+                Debug.Log($"  Verificación — Tag1 en world: {arenaRoot.TransformPoint(uniP0):F3} debería ser ≈ {fisP0:F3}");
             }
         }
 
@@ -371,7 +408,11 @@ namespace Inmersus.FiducialMarkers
         // ---------------------------------------------------------------
         public void ReiniciarMarcadores()
         {
-            _qrPendienteDeConfirmacion = null;
+            _tagActivo = "";
+            _estadoActual = EstadoPosicionamiento.Inactivo;
+            if (_anchorGhost != null) Destroy(_anchorGhost);
+            if (_laserRenderer != null) _laserRenderer.enabled = false;
+
             _anchorsPorMarcador.Clear();
             _confirmados.Clear();
             _posicionesFisicas.Clear();
