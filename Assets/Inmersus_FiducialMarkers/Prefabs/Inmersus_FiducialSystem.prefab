@@ -10,11 +10,12 @@ GameObject:
   m_Component:
   - component: {fileID: 586438279090613881}
   - component: {fileID: 4804401823177574682}
+  - component: {fileID: 8664001655957013924}
   - component: {fileID: 734336387438993032}
   - component: {fileID: 7063687505845030742}
   - component: {fileID: 6836951730828287612}
   - component: {fileID: 7454772276891711902}
-  - component: {fileID: 8664001655957013924}
+  - component: {fileID: 4658076598930765765}
   m_Layer: 0
   m_Name: Inmersus_FiducialSystem
   m_TagString: Untagged
@@ -64,6 +65,22 @@ MonoBehaviour:
       x: 1
       y: 1
   mostrarMensajesDebug: 1
+--- !u!114 &8664001655957013924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5808849023329401963}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8d01223e2d1b954583def6867baf74e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.ShowAfterCalibration
+  objetosDeLaArena:
+  - {fileID: 0}
+  - {fileID: 0}
+  mostrarMensajesDebug: 1
 --- !u!114 &734336387438993032
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -76,7 +93,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7e58c00337c026d4993c5b77ac15bb96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.MarkerAnchorManager
-  detectorTag: {fileID: 0}
+  detectorTag: {fileID: 6836951730828287612}
   anchorPrefab: {fileID: 1978002011806910258, guid: cd2360f6c9f3b3b4f90f53cac91a9698, type: 3}
   arenaRoot: {fileID: 0}
   mostrarMensajesDebug: 1
@@ -136,7 +153,7 @@ MonoBehaviour:
   colorExito: {r: 0.2, g: 0.9, b: 0.4, a: 1}
   colorIcono: {r: 0.4, g: 0.7, b: 1, a: 1}
   colorParcial: {r: 1, g: 0.8, b: 0.2, a: 1}
---- !u!114 &8664001655957013924
+--- !u!114 &4658076598930765765
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -145,10 +162,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 5808849023329401963}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a8d01223e2d1b954583def6867baf74e, type: 3}
+  m_Script: {fileID: 11500000, guid: 2f2f68ef744cf78448a087c89cb9c34f, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.ShowAfterCalibration
-  objetosDeLaArena:
-  - {fileID: 0}
-  - {fileID: 0}
-  mostrarMensajesDebug: 1
+  m_EditorClassIdentifier: Assembly-CSharp::Inmersus.FiducialMarkers.AutoAlignmentCorrector
+  anchorManager: {fileID: 734336387438993032}
+  aprilTagDetector: {fileID: 6836951730828287612}
+  arenaRoot: {fileID: 0}
+  cameraRig: {fileID: 0}
+  autoCorrectionEnabled: 1
+  lecturasRequeridas: 30
+  distanciaMaximaEscaneo: 2
+  tiempoInterpolacion: 2
+  ventanaTiempoMultiTag: 10

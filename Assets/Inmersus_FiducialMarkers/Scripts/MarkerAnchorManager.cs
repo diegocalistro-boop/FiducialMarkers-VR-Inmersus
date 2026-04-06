@@ -55,6 +55,7 @@ namespace Inmersus.FiducialMarkers
         private readonly Dictionary<string, Vector3> _posicionesFisicas = new();
         private readonly Dictionary<string, OVRSpatialAnchor> _anchorsPorMarcador = new();
 
+        public bool AlineacionHecha => _alineacionHecha;
         private bool _alineacionHecha = false;
 
         // Estado Máquina Manual (Point & Shoot)
@@ -285,6 +286,24 @@ namespace Inmersus.FiducialMarkers
 
             if (mostrarMensajesDebug)
                 Debug.Log("[MarkerAnchorManager] ¡Arena alineada! El escenario virtual debería coincidir con los QR físicos.");
+                
+            // Guardar configuración automáticamente para la próxima vez
+            var saveManager = GetComponent<CalibrationSaveManager>();
+            if (saveManager != null) saveManager.GuardarCalibracionLocal(arenaRoot);
+
+        }
+
+        public void ForzarCalibracionHecha()
+        {
+            _alineacionHecha = true;
+            if (_laserRenderer != null) _laserRenderer.enabled = false;
+            OnInstruccionInteractiva?.Invoke("Calibración Restaurada", "La arena ha sido cargada desde el último guardado automático.", 3);
+            
+            var coord = FindFirstObjectByType<QRDetectionCoordinator>();
+            if (coord != null)
+            {
+                coord.CompletarCalibracion();
+            }
         }
 
         /// <summary>

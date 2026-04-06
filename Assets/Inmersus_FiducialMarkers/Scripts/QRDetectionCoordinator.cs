@@ -90,7 +90,7 @@ namespace Inmersus.FiducialMarkers
             }
         }
 
-        private void CompletarCalibracion()
+        public void CompletarCalibracion()
         {
             _calibrado = true;
 

@@ -9159,6 +9159,22 @@ PrefabInstance:
       propertyPath: detectorTag
       value: 
       objectReference: {fileID: 565664541}
+    - target: {fileID: 4658076598930765765, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: arenaRoot
+      value: 
+      objectReference: {fileID: 1323629948}
+    - target: {fileID: 4658076598930765765, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: cameraRig
+      value: 
+      objectReference: {fileID: 2020819112}
+    - target: {fileID: 4658076598930765765, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: anchorManager
+      value: 
+      objectReference: {fileID: 565664540}
+    - target: {fileID: 4658076598930765765, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
+      propertyPath: aprilTagDetector
+      value: 
+      objectReference: {fileID: 565664541}
     - target: {fileID: 4804401823177574682, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
       propertyPath: marcadores.Array.data[0].id
       value: 1
@@ -9194,7 +9210,7 @@ PrefabInstance:
     - target: {fileID: 7063687505845030742, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
       propertyPath: detectorTag
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 565664541}
     - target: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
       propertyPath: coordinador
       value: 
@@ -9202,7 +9218,7 @@ PrefabInstance:
     - target: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
       propertyPath: detectorTag
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 565664541}
     - target: {fileID: 7454772276891711902, guid: 8a9b2c3d4e5f1234567890abcdef1234, type: 3}
       propertyPath: anchorManager
       value: 
