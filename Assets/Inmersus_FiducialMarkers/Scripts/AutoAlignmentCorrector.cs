@@ -7,6 +7,8 @@ namespace Inmersus.FiducialMarkers
 {
     public class AutoAlignmentCorrector : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript = "GUARDIÁN ANTI DRIFT. Trabaja en secreto después de calibrar. Promedia 30 frames ópticos y si el visor de desvió por error del sistema, te corrige invisiblemente moviendo todo el escenario (X,Z y Rotación) sin levantar el piso.";
+
         [Header("Referencias")]
         public MarkerAnchorManager anchorManager;
         public AprilTagDetector aprilTagDetector;
@@ -24,15 +26,27 @@ namespace Inmersus.FiducialMarkers
         public float distanciaMaximaEscaneo = 2.0f;
 
         [Tooltip("Tiempo que tarda la transición suave en aplicarse.")]
-        public float tiempoInterpolacion = 2.0f;
+        public float tiempoInterpolacion = 5.0f;
 
         [Tooltip("Solo corrige rotación si lee al menos 2 tags en este lapso de segundos.")]
         public float ventanaTiempoMultiTag = 10.0f;
+
+        [Tooltip("Segundos de espera tras calibración antes de aceptar detecciones (evita vibración inicial).")]
+        public float periodoDeGracia = 5.0f;
+
+        [Tooltip("Distancia mínima de drift (metros) para que se aplique una corrección.")]
+        public float umbralMinimoCorreccion = 0.05f;
+
+        [Tooltip("Cada cuántos segundos el corrector activa el escáner para buscar drift.")]
+        public float intervaloReEscaneo = 30.0f;
 
         private Dictionary<string, DriftFilter> _filtrosTag = new Dictionary<string, DriftFilter>();
         private Dictionary<string, float> _ultimoTiempoValido = new Dictionary<string, float>();
         
         private bool _isCorrecting = false;
+        private float _tiempoCalibrado = -1f;
+        private bool _graciaActiva = true;
+        private Coroutine _reEscaneoCoroutine;
 
         private void Start()
         {
@@ -41,17 +55,58 @@ namespace Inmersus.FiducialMarkers
             
             if (cameraRig == null)
                 cameraRig = FindFirstObjectByType<OVRCameraRig>();
+
+            // Escuchar el evento de calibración para iniciar el período de gracia
+            var coordinador = FindFirstObjectByType<QRDetectionCoordinator>();
+            if (coordinador != null)
+                coordinador.OnArenaCalibrated += OnCalibracionCompletada;
         }
 
         private void OnDestroy()
         {
             if (aprilTagDetector != null)
                 aprilTagDetector.OnTagDetected -= OnTagDetected;
+            
+            var coordinador = FindFirstObjectByType<QRDetectionCoordinator>();
+            if (coordinador != null)
+                coordinador.OnArenaCalibrated -= OnCalibracionCompletada;
+        }
+
+        private void OnCalibracionCompletada()
+        {
+            _tiempoCalibrado = Time.time;
+            _graciaActiva = true;
+            Debug.Log($"[AutoAlignment] Período de gracia de {periodoDeGracia}s iniciado.");
+            
+            if (_reEscaneoCoroutine != null) StopCoroutine(_reEscaneoCoroutine);
+            _reEscaneoCoroutine = StartCoroutine(IniciarReEscaneoSuave());
+        }
+
+        /// <summary>
+        /// Espera el período de gracia y luego activa el escáner en modo bajo consumo
+        /// (cada 2s en vez de 0.1s) para mantener la corrección de drift activa
+        /// sin causar vibración visual.
+        /// </summary>
+        private IEnumerator IniciarReEscaneoSuave()
+        {
+            yield return new WaitForSeconds(periodoDeGracia);
+            _graciaActiva = false;
+            Debug.Log("[AutoAlignment] Período de gracia finalizado. Activando escáner en modo bajo consumo.");
+
+            // Activar escáner en modo bajo consumo permanente
+            if (aprilTagDetector != null && autoCorrectionEnabled)
+            {
+                aprilTagDetector.StartScanningLowPower();
+            }
         }
 
         private void OnTagDetected(int tagID, Vector3 localPos, Quaternion localRot)
         {
             if (!autoCorrectionEnabled || _isCorrecting || anchorManager == null || !anchorManager.AlineacionHecha)
+                return;
+
+            // Ignorar detecciones durante el período de gracia post-calibración
+            if (_graciaActiva)
                 return;
 
             string idStr = tagID.ToString();
@@ -143,6 +198,13 @@ namespace Inmersus.FiducialMarkers
             // Forzar a que la altura (Y) se mantenga intacta
             targetRootPos.y = startPos.y; 
 
+            // Ignorar micro-ajustes para evitar vibración constante (jitter)
+            if (Vector3.Distance(startPos, targetRootPos) < umbralMinimoCorreccion)
+            {
+                _isCorrecting = false;
+                yield break;
+            }
+
             float elapsed = 0f;
             while (elapsed < tiempoInterpolacion)
             {
@@ -179,6 +241,13 @@ namespace Inmersus.FiducialMarkers
 
             Vector3 startPos = arenaRoot.position;
             Quaternion startRot = arenaRoot.rotation;
+
+            // Ignorar micro-ajustes para evitar vibración constante (jitter)
+            if (Vector3.Distance(startPos, targetPos) < umbralMinimoCorreccion && Quaternion.Angle(startRot, targetRot) < 0.5f)
+            {
+                _isCorrecting = false;
+                yield break;
+            }
 
             float elapsed = 0f;
             while (elapsed < tiempoInterpolacion)

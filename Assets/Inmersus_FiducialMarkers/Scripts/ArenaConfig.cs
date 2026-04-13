@@ -43,6 +43,8 @@ namespace Inmersus.FiducialMarkers
 
     public class ArenaConfig : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript = "DICCIONARIO DE LA ARENA. Guarda las medidas y coordenadas de los AprilTags del mundo real en un JSON. Es el 'mapa' que los demás leen para saber dónde deberian estar los objetos virtuales.";
+
         public static ArenaConfig Instance { get; private set; }
 
         [Header("Configuración de la Arena")]

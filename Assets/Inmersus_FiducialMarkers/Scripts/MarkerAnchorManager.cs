@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Photon.Pun;
 using UnityEngine;
 
 namespace Inmersus.FiducialMarkers
@@ -24,6 +23,8 @@ namespace Inmersus.FiducialMarkers
     /// </summary>
     public class MarkerAnchorManager : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript = "ALINEADOR PRINCIPAL LÁSER. Gestiona el apunte manual de los tags para calibrar. Mueve el 'ArenaRoot' ubicando el escenario entero en el espacio físico correcto sin romper las físicas ni las manos del Player.";
+
         [Header("Referencias")]
         public AprilTagDetector detectorTag;
 
@@ -159,6 +160,11 @@ namespace Inmersus.FiducialMarkers
             _estadoActual = EstadoPosicionamiento.Inactivo;
             _laserRenderer.enabled = false;
 
+            // PAUSAR escaneo inmediatamente para evitar detecciones fantasma
+            // mientras el usuario camina hacia el siguiente tag
+            if (detectorTag != null)
+                detectorTag.StopScanning();
+
             Vector3 posFinal = _anchorGhost.transform.position;
             string idConfirmado = _tagActivo;
 
@@ -173,6 +179,15 @@ namespace Inmersus.FiducialMarkers
 
             await CrearAnchor(idConfirmado, posFinal);
             TryAlinear();
+
+            // Si aún no se completó la alineación, reanudar escaneo
+            // para buscar el siguiente tag
+            if (!_alineacionHecha && detectorTag != null)
+            {
+                if (mostrarMensajesDebug)
+                    Debug.Log("[MarkerAnchorManager] Reanudando escaneo para buscar siguiente tag...");
+                detectorTag.StartScanning();
+            }
         }
 
         // ---------------------------------------------------------------
@@ -270,18 +285,18 @@ namespace Inmersus.FiducialMarkers
                 Debug.Log($"  QR_01 físico: {fisP0:F3}  |  Unity: {uniP0:F3}");
                 Debug.Log($"  QR_02 físico: {fisP1:F3}  |  Unity: {uniP1:F3}");
                 Debug.Log($"  Distancia física: {distFis:F3}m  |  Distancia Unity: {distUni:F3}m");
-                Debug.Log($"  Escala: {escala:F3}  |  Yaw: {yawCorreccion:F1}°");
+                Debug.Log($"  Escala (diagnóstico, NO aplicada): {escala:F3}  |  Yaw: {yawCorreccion:F1}°");
             }
 
-            // --- Aplicar transformación al ArenaRoot ---
+            // --- Aplicar transformación al ArenaRoot (sin escala) ---
             AplicarAlineacion(fisP0, uniP0, yawCorreccion);
 
-            // --- Publicar alineación por Photon ---
-            if (PhotonNetwork.InRoom && _anchorsPorMarcador.ContainsKey(m0.id) && _anchorsPorMarcador[m0.id] != null)
+            // --- DETENER ESCANEO — la calibración manual está completa ---
+            if (detectorTag != null)
             {
-                var anchor = _anchorsPorMarcador[m0.id];
-                var anchorPose = new Pose(anchor.transform.position, anchor.transform.rotation);
-                PhotonAnchorManager.PublishAlignmentAnchor(anchor.Uuid, anchorPose);
+                detectorTag.StopScanning();
+                if (mostrarMensajesDebug)
+                    Debug.Log("[MarkerAnchorManager] Escaneo DETENIDO tras alineación exitosa.");
             }
 
             if (mostrarMensajesDebug)
@@ -338,6 +353,11 @@ namespace Inmersus.FiducialMarkers
             //    => arenaRoot.position = fisP0 - rotArena * uniP0
             arenaRoot.position = fisP0 - rotArena * uniP0;
 
+            // NO aplicar escala al ArenaRoot. Escalar un padre con Rigidbodies hijos
+            // rompe las físicas de Unity (causa efecto péndulo al agarrar objetos).
+            // La alineación por rotación + traslación es suficientemente precisa.
+            arenaRoot.localScale = Vector3.one;
+
             if (mostrarMensajesDebug)
             {
                 Debug.Log($"[MarkerAnchorManager] ArenaRoot alineado:");
@@ -388,36 +408,9 @@ namespace Inmersus.FiducialMarkers
             if (!saveResult.Success)
                 Debug.LogWarning($"[MarkerAnchorManager] No se pudo guardar anchor '{markerId}': {saveResult.Status}");
 
-            // Compartir por Photon
-            if (PhotonNetwork.InRoom)
-                CompartirConSala(markerId, spatialAnchor);
+            // --- Espacio reservado para compartir por servidor NGO/Unity ---
 
             OnMarkerAnchorCreated?.Invoke(markerId, spatialAnchor);
-        }
-
-        private async void CompartirConSala(string markerId, OVRSpatialAnchor anchor)
-        {
-            var userIds = PhotonAnchorManager.RoomUserIds;
-            if (userIds == null || userIds.Count == 0) return;
-
-            var spaceUsers = new List<OVRSpaceUser>();
-            foreach (ulong uid in userIds)
-                if (OVRSpaceUser.TryCreate(uid, out var su))
-                    spaceUsers.Add(su);
-
-            if (spaceUsers.Count == 0) return;
-
-            var result = await anchor.ShareAsync(spaceUsers);
-            if (result.IsSuccess())
-            {
-                if (mostrarMensajesDebug)
-                    Debug.Log($"[MarkerAnchorManager] Anchor '{markerId}' compartido con {spaceUsers.Count} usuario(s).");
-                PhotonAnchorManager.PublishAnchorToUsers(anchor.Uuid, userIds);
-            }
-            else
-            {
-                Debug.LogError($"[MarkerAnchorManager] Error al compartir anchor '{markerId}': {result}");
-            }
         }
 
 

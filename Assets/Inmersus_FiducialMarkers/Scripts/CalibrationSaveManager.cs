@@ -5,6 +5,8 @@ namespace Inmersus.FiducialMarkers
 {
     public class CalibrationSaveManager : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript = "DISCO DURO. Al calibrar el cuarto, guarda la posición en memoria. La próxima vez que abras la app, acomoda el mundo en milisegundos sin obligarte a escanear de nuevo la pared.";
+
         private const string PREF_HAS_SAVE = "Arena_HasSave";
         private const string PREF_POS_X = "Arena_PosX";
         private const string PREF_POS_Y = "Arena_PosY";

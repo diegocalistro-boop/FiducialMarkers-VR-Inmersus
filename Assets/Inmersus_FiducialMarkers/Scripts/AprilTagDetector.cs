@@ -9,6 +9,8 @@ namespace Inmersus.FiducialMarkers
 {
     public class AprilTagDetector : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript = "OJO ÓPTICO. Prende y controla la cámara Passthrough de Quest, buscando cuadros AprilTag y avisando continuamente a los demás scripts sus datos fotográficos en el espacio.";
+
         [Header("Configuración")]
         [Tooltip("Referencia al componente PassthroughCameraAccess")]
         public PassthroughCameraAccess passthroughCamera;
@@ -19,8 +21,13 @@ namespace Inmersus.FiducialMarkers
         /// <summary>Tamaño en metros (para uso interno del engine).</summary>
         public float tagSize => tagSizeCm / 100f;
 
-        [Tooltip("Cada cuántos segundos escanea.")]
+        [Tooltip("Cada cuántos segundos escanea (modo calibración = rápido).")]
         public float segundosEntreEscaneos = 0.1f;
+
+        [Tooltip("Cada cuántos segundos escanea en modo bajo consumo (post-calibración).")]
+        public float segundosEntreEscaneosLowPower = 10.0f;
+
+        private bool _lowPowerMode = false;
 
         [Header("Debug")]
         public bool mostrarMensajesDebug = true;
@@ -122,6 +129,21 @@ namespace Inmersus.FiducialMarkers
         public void StopScanning()
         {
             _isScanning = false;
+            _lowPowerMode = false;
+        }
+
+        /// <summary>
+        /// Activa el escaneo en modo bajo consumo (cada 2s en vez de 0.1s).
+        /// Ideal para corrección de drift post-calibración sin causar vibración.
+        /// </summary>
+        public void StartScanningLowPower()
+        {
+            _lowPowerMode = true;
+            if (!_isScanning && passthroughCamera != null && passthroughCamera.IsPlaying)
+            {
+                _isScanning = true;
+                StartCoroutine(ScanLoop());
+            }
         }
 
         // ---------------------------------------------------------------
@@ -131,7 +153,8 @@ namespace Inmersus.FiducialMarkers
         {
             while (_isScanning)
             {
-                yield return new WaitForSeconds(segundosEntreEscaneos);
+                float intervalo = _lowPowerMode ? segundosEntreEscaneosLowPower : segundosEntreEscaneos;
+                yield return new WaitForSeconds(intervalo);
                 yield return new WaitForEndOfFrame();
 
                 if (passthroughCamera != null &&

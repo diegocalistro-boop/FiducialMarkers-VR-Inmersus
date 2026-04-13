@@ -142,7 +142,7 @@ Rigidbody:
   m_ImplicitTensor: 1
   m_UseGravity: 0
   m_IsKinematic: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 3
 --- !u!114 &144685978841521929
@@ -288,7 +288,7 @@ MonoBehaviour:
     _pinkyRequirement: 2
     _unselectMode: 0
   _movementProvider: {fileID: 0}
-  _handAligment: 0
+  _handAligment: 2
   _handGrabPoses:
   - {fileID: 8533787906866929429}
 --- !u!114 &8533787906866929429

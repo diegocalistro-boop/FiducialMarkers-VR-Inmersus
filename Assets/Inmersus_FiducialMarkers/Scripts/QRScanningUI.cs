@@ -12,6 +12,8 @@ namespace Inmersus.FiducialMarkers
     /// </summary>
     public class QRScanningUI : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript = "EL PIZARRÓN MULTIMEDIA. Solo dibuja los menús flotantes, textos, íconos y progreso que ves en tu cara durante la calibración. No toma ninguna decisión espacial.";
+
         [Header("Referencias")]
         [Tooltip("Referencia al AprilTagDetector de la escena")]
         public AprilTagDetector detectorTag;

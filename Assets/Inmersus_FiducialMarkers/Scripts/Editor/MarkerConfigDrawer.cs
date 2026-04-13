@@ -6,13 +6,27 @@ namespace Inmersus.FiducialMarkers
     [CustomPropertyDrawer(typeof(MarkerConfig))]
     public class MarkerConfigDrawer : PropertyDrawer
     {
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+        {
+            if (property.isExpanded)
+            {
+                var posProp = property.FindPropertyRelative("position");
+                float height = EditorGUIUtility.singleLineHeight + 2f; // foldout rect
+                height += EditorGUIUtility.singleLineHeight + 2f; // id rect
+                height += EditorGUIUtility.singleLineHeight + 2f; // size rect
+                height += EditorGUI.GetPropertyHeight(posProp, true) + 2f; // position rect
+                return height;
+            }
+            return EditorGUIUtility.singleLineHeight;
+        }
+
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             // Encontrar la propiedad "id" dentro de este MarkerConfig
             SerializedProperty idProp = property.FindPropertyRelative("id");
-            string idStr = idProp != null ? idProp.stringValue : "?";
+            string idStr = idProp != null && !string.IsNullOrEmpty(idProp.stringValue) ? idProp.stringValue : "?";
             
-            // Extraer el índice del array desde el propertyPath (ej: "marcadores.Array.data[3]")
+            // Extraer el índice del array desde el propertyPath
             int index = -1;
             int startBracket = property.propertyPath.LastIndexOf('[');
             if (startBracket >= 0)
@@ -26,24 +40,38 @@ namespace Inmersus.FiducialMarkers
             }
 
             // Cambiar la etiqueta para que muestre "Tag N (ID: X)"
-            if (index >= 0)
-                label.text = $"Tag {index + 1} (ID: {idStr})";
-            else
-                label.text = $"Tag (ID: {idStr})";
+            string customLabel = (index >= 0) ? $"Tag {index + 1} (ID: {idStr})" : $"Tag (ID: {idStr})";
 
-            // Comenzar el bloque de propiedad para que funcione bien con deshacer/rehacer y prefabs
             EditorGUI.BeginProperty(position, label, property);
             
-            // Dibujar la propiedad con todos sus hijos usando nuestra nueva etiqueta
-            EditorGUI.PropertyField(position, property, label, true);
-            
-            EditorGUI.EndProperty();
-        }
+            Rect foldoutRect = new Rect(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
+            property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, customLabel, true);
 
-        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
-        {
-            // Devolver la altura total necesaria para dibujar todos los campos que estén desplegados
-            return EditorGUI.GetPropertyHeight(property, true);
+            if (property.isExpanded)
+            {
+                EditorGUI.indentLevel++;
+                
+                var sizeProp = property.FindPropertyRelative("size");
+                var posProp = property.FindPropertyRelative("position");
+
+                float y = position.y + EditorGUIUtility.singleLineHeight + 2f;
+                Rect idRect = new Rect(position.x, y, position.width, EditorGUIUtility.singleLineHeight);
+                EditorGUI.PropertyField(idRect, idProp);
+
+                y += EditorGUIUtility.singleLineHeight + 2f;
+                Rect sizeRect = new Rect(position.x, y, position.width, EditorGUIUtility.singleLineHeight);
+                // Aquí renombramos gráficamente el Size a "Tamaño (cm)"
+                EditorGUI.PropertyField(sizeRect, sizeProp, new GUIContent("Tamaño (cm)", "Tamaño del lado del marcador en centímetros. Ej: 20"));
+
+                y += EditorGUIUtility.singleLineHeight + 2f;
+                float posHeight = EditorGUI.GetPropertyHeight(posProp, true);
+                Rect posRect = new Rect(position.x, y, position.width, posHeight);
+                EditorGUI.PropertyField(posRect, posProp, true);
+
+                EditorGUI.indentLevel--;
+            }
+
+            EditorGUI.EndProperty();
         }
     }
 }

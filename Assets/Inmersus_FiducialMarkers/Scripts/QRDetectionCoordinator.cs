@@ -14,13 +14,22 @@ namespace Inmersus.FiducialMarkers
     /// </summary>
     public class QRDetectionCoordinator : MonoBehaviour
     {
+        [SerializeField] [LockableTextArea] private string descripcionScript =
+            "EL ÁRBITRO DE LA PARTIDA. Lee automáticamente cuántos tags hay en el ArenaConfig (JSON) " +
+            "y espera que todos sean escaneados antes de pitar 'Calibración Exitosa'.\n\n" +
+            "═══ VINCULACIÓN CON ARENACONFIG ═══\n" +
+            "• En Start() lee ArenaConfig.Instance.Config.markers.Count\n" +
+            "• Si ArenaConfig no existe, usa el valor manual de 'anchorsNecesarios' como fallback\n" +
+            "• Si agregas/quitas tags en el JSON, este script se actualiza solo";
+
         [Header("Referencias")]
         public MarkerAnchorManager anchorManager;
         public AprilTagDetector    detectorTag;
         public QRScanningUI        scanningUI;   // opcional
 
         [Header("Configuración")]
-        [Tooltip("Número mínimo de QR escaneados para considerar la arena calibrada")]
+        [Tooltip("Fallback: Se usa solo si ArenaConfig no está disponible. " +
+                 "Si ArenaConfig existe, se lee automáticamente del JSON.")]
         [Min(1)]
         public int anchorsNecesarios = 2;
 
@@ -60,6 +69,21 @@ namespace Inmersus.FiducialMarkers
                 return;
             }
 
+            // Leer automáticamente cuántos marcadores hay en el ArenaConfig
+            if (ArenaConfig.Instance != null && ArenaConfig.Instance.Config != null
+                && ArenaConfig.Instance.Config.markers != null
+                && ArenaConfig.Instance.Config.markers.Count > 0)
+            {
+                anchorsNecesarios = ArenaConfig.Instance.Config.markers.Count;
+                if (mostrarMensajesDebug)
+                    Debug.Log($"[QRDetectionCoordinator] ArenaConfig detectado: {anchorsNecesarios} marcador(es) en el JSON.");
+            }
+            else
+            {
+                if (mostrarMensajesDebug)
+                    Debug.LogWarning($"[QRDetectionCoordinator] ArenaConfig no disponible, usando fallback manual: {anchorsNecesarios}");
+            }
+
             anchorManager.OnMarkerAnchorCreated += OnAnchorCreado;
 
             if (mostrarMensajesDebug)
@@ -97,9 +121,14 @@ namespace Inmersus.FiducialMarkers
             if (mostrarMensajesDebug)
                 Debug.Log("[QRDetectionCoordinator] ¡Arena calibrada! Todos los marcadores escaneados.");
 
-            // Detener el escaneo para ahorrar CPU/batería
+            // Detener escaneo tras calibración para eliminar vibración al caminar.
+            // El AutoAlignmentCorrector lo reactivará cuando necesite re-escanear.
             if (detectorTag != null)
+            {
                 detectorTag.StopScanning();
+                if (mostrarMensajesDebug)
+                    Debug.Log("[QRDetectionCoordinator] Escaneo detenido post-calibración.");
+            }
 
             OnArenaCalibrated?.Invoke();
         }
